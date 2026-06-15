@@ -22,6 +22,14 @@ from bublik.core.run.compromised import (
     unmark_run_compromised,
     validate_compromised_request,
 )
+from bublik.core.run.dto import (
+    MarkRunCompromisedResult,
+    RunCommentResult,
+    RunDetailsResult,
+    RunListPagination,
+    RunListResult,
+    RunStatsResult,
+)
 from bublik.core.run.external_links import get_sources
 from bublik.core.run.filter_expression import filter_by_expression
 from bublik.core.run.stats import (
@@ -99,7 +107,10 @@ class RunService:
         return get_run_status(run)
 
     @staticmethod
-    def get_run_stats(run_id: int, requirements: str | None = None) -> dict:
+    def get_run_stats(
+        run_id: int,
+        requirements: str | None = None,
+    ) -> RunStatsResult | None:
         """
         Get statistics for a run.
 
@@ -108,7 +119,7 @@ class RunService:
             requirements: Optional requirements filter
 
         Returns:
-            Dictionary with run statistics
+            RunStatsResult with run statistics or None if stats are unavailable
         """
         return get_run_stats_detailed_with_comments(run_id, requirements)
 
@@ -149,7 +160,7 @@ class RunService:
         comment: str,
         bug_id: str | None = None,
         reference_key: str | None = None,
-    ) -> dict:
+    ) -> MarkRunCompromisedResult:
         """
         Mark a run as compromised.
 
@@ -160,7 +171,7 @@ class RunService:
             reference_key: Optional reference key
 
         Returns:
-            Dictionary with comment and bug info
+            MarkRunCompromisedResult with comment and bug info
 
         Raises:
             ValidationError: if validation fails
@@ -170,10 +181,10 @@ class RunService:
             raise ValidationError(err_msg)
 
         mark_run_compromised(run_id, comment, bug_id, reference_key)
-        return {
-            'comment': comment,
-            'bug': f'Bug ID: {bug_id}' if bug_id else None,
-        }
+        return MarkRunCompromisedResult(
+            comment=comment,
+            bug=f'Bug ID: {bug_id}' if bug_id else None,
+        )
 
     @staticmethod
     def unmark_run_compromised(run_id: int) -> None:
@@ -260,8 +271,8 @@ class RunService:
         project_id: int | None = None,
         page: int | None = None,
         page_size: int | None = None,
-    ) -> dict:
-        """
+    ) -> RunListResult:
+        '''
         List runs filtered by date range and optionally by project.
 
         Args:
@@ -272,16 +283,20 @@ class RunService:
             page_size: Items per page (default: 25, max: 10000)
 
         Returns:
-            Dictionary with pagination metadata and run detail dictionaries
-        """
+            RunListResult with pagination metadata and run details
+        '''
 
         runs = RunService.list_runs_queryset(
             start_date=start_date,
             finish_date=finish_date,
             project_id=project_id,
         )
-        runs_details = generate_runs_details(runs)
-        return PaginatedResult.paginate_queryset(runs_details, page, page_size)
+        paginated_runs = PaginatedResult.paginate_queryset(runs, page, page_size)
+
+        return RunListResult(
+            pagination=RunListPagination(**paginated_runs['pagination']),
+            results=generate_runs_details(paginated_runs['results']),
+        )
 
     @staticmethod
     def aggregate_runs_by_period(
@@ -526,18 +541,18 @@ class RunService:
         )
 
     @staticmethod
-    def get_nok_distribution(run_id: int) -> dict:
-        """
+    def get_nok_distribution(run_id: int) -> list[bool]:
+        '''
         Get NOK (failure) distribution for a run.
 
         Args:
             run_id: The ID of the test run
 
         Returns:
-            Dictionary with NOK distribution data
-        """
+            List of NOK distribution flags
+        '''
         run = RunService.get_run(run_id)
-        return get_nok_results_distribution(run)
+        return list(get_nok_results_distribution(run))
 
     @staticmethod
     def get_run_comment(run_id: int) -> str | None:
@@ -566,7 +581,7 @@ class RunService:
         return comments.first().meta.value
 
     @staticmethod
-    def create_run_comment(run_id: int, content: str) -> dict:
+    def create_run_comment(run_id: int, content: str) -> RunCommentResult:
         """
         Create or update run comment.
 
@@ -575,7 +590,7 @@ class RunService:
             content: Comment content
 
         Returns:
-            Dictionary with comment details
+            RunCommentResult with comment details
         """
         run = RunService.get_run(run_id)
 
@@ -594,10 +609,10 @@ class RunService:
             )
             mr, _ = mr_serializer.get_or_create()
 
-        return {
-            'id': mr.id,
-            'comment': mr.meta.value,
-        }
+        return RunCommentResult(
+            id=mr.id,
+            comment=mr.meta.value,
+        )
 
     @staticmethod
     def delete_run_comment(run_id: int) -> None:
