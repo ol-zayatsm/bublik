@@ -11,3 +11,9 @@ class PerformanceCheckQuerySerializer(serializers.Serializer):
         queryset=Project.objects.all(),
         required=False,
     )
+
+
+class PerformanceCheckResponseSerializer(serializers.Serializer):
+    label = serializers.CharField()
+    url = serializers.URLField(allow_null=True)
+    timeout = serializers.IntegerField()
