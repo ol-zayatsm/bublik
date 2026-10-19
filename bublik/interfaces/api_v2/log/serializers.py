@@ -8,7 +8,7 @@ class LogJsonQuerySerializer(serializers.Serializer):
     page = serializers.IntegerField(
         required=False,
         min_value=0,
-        help_text='Log page number; 0 selects the combined log',
+        help_text='Log page number; omit for the default log or use 0 for the combined log',
     )
 
 
@@ -17,9 +17,18 @@ class LogProxyQuerySerializer(serializers.Serializer):
 
 
 class LogJsonResponseSerializer(serializers.Serializer):
-    url = serializers.CharField(allow_null=True)
-    attachments_url = serializers.CharField(allow_null=True)
+    url = serializers.CharField(
+        allow_null=True,
+        help_text='JSON log URL, or null when unavailable',
+    )
+    attachments_url = serializers.CharField(
+        allow_null=True,
+        help_text='Attachments JSON URL, or null when unavailable',
+    )
 
 
 class LogHtmlResponseSerializer(serializers.Serializer):
-    url = serializers.CharField(allow_null=True)
+    url = serializers.CharField(
+        allow_null=True,
+        help_text='HTML log URL, or null when unavailable',
+    )
