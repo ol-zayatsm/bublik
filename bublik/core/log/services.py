@@ -41,18 +41,24 @@ class LogService:
             DTO with JSON log and attachments URLs, or None for unavailable URLs
 
         Raises:
-            UnprocessableEntityError: if result not found or invalid page parameter
+            NotFoundError: if result not found
+            UnprocessableEntityError: if page is not a non-negative integer
         """
+        if page is not None:
+            if not isinstance(page, int):
+                msg = f'Incorrect value for page parameter: {page}. Expecting number'
+                raise UnprocessableEntityError(msg)
+            if page < 0:
+                msg = (
+                    f'Incorrect value for page parameter: {page}. Expecting non-negative number'
+                )
+                raise UnprocessableEntityError(msg)
+
         result = ResultService.get_result(result_id)
         run_source_link = get_sources(result)
 
         if not run_source_link:
             return LogUrlsDTO(url=None, attachments_url=None)
-
-        # Validate page parameter
-        if page is not None and not isinstance(page, int):
-            msg = f'Incorrect value for page parameter: {page}. Expecting number'
-            raise UnprocessableEntityError(msg)
 
         # Build node name
         if not result.test_run:
